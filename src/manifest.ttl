@@ -1,0 +1,9 @@
+@prefix doap:  <http://usefulinc.com/ns/doap#> .
+@prefix foaf:  <http://xmlns.com/foaf/0.1/> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix lv2:   <http://lv2plug.in/ns/lv2core#> .
+
+<https://michaelganger.org/plugins/cnn_distortion>
+	a lv2:Plugin ;
+	lv2:binary <distortion.so> ;
+	rdfs:seeAlso <distortion.ttl> .
