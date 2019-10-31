@@ -1,14 +1,14 @@
 #include <lvtk/plugin.hpp>
 #include <boost/circular_buffer.hpp>
 #include "distortion.h"
-#include <cnn_dist_v2.h>
 #include <cmath>
+#include <cnn_dist_v2.h>
+using cnn_dist = cnn_dist_v2;
 
 float from_db(float x) {
 	return std::pow(10,x/20);
 }
 
-using cnn_dist = cnn_dist_v2;
 
 class CnnDistortion : public lvtk::Plugin<CnnDistortion> {
 private:
