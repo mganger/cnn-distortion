@@ -21,7 +21,7 @@ The Result
 ----------
 
 Basically, the result is that it's super cool! Checkout the audio clips in my
-blog post [here](https://michaelganger.org/articles/from-numbers-to-rockstar).
+blog post [here](https://michaelganger.org/articles/index.php/2019/10/31/from-numbers-to-rockstar/).
 
 To any audiophiles that think it sounds weird, the reason is simple: I recorded
 the output straight from the headphone output of the amp (my Orange Micro
