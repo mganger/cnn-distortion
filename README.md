@@ -23,8 +23,6 @@ The Result
 Basically, the result is that it's super cool! Checkout the audio clips in my
 blog post [here](https://michaelganger.org/articles/index.php/2019/10/31/from-numbers-to-rockstar/).
 
-<audio controls="" src="https://michaelganger.org/articles/wp-content/uploads/2019/10/medium-1.mp3"></audio>
-
 To any audiophiles that think it sounds weird, the reason is simple: I recorded
 the output straight from the headphone output of the amp (my Orange Micro
 Terror), not through a speaker cabinet/microphone. The model likewise
