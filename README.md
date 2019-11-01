@@ -17,6 +17,11 @@ laptop. How, you ask? Using a CNN! Here's the process:
 3. Train a CNN to produce the distorted signal from the clean signal.
 4. Implement the CNN in a realtime plugin.
 
+The Process
+-----------
+
+I used PyTorch in a Jupyter notebook to train the CNN. It's in the repository, but you can see the result [here](https://nbviewer.jupyter.org/github/mganger/cnn-distortion/blob/master/notebooks/CNN%20Distortion.ipynb).
+
 The Result
 ----------
 
