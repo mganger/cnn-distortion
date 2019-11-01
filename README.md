@@ -23,6 +23,8 @@ The Result
 Basically, the result is that it's super cool! Checkout the audio clips in my
 blog post [here](https://michaelganger.org/articles/index.php/2019/10/31/from-numbers-to-rockstar/).
 
+<audio controls="" src="https://michaelganger.org/articles/wp-content/uploads/2019/10/medium-1.mp3"></audio>
+
 To any audiophiles that think it sounds weird, the reason is simple: I recorded
 the output straight from the headphone output of the amp (my Orange Micro
 Terror), not through a speaker cabinet/microphone. The model likewise
@@ -67,6 +69,12 @@ To build and install the LV2 plugin, run:
 make
 sudo make install
 ```
+
+The build requirements are:
+ - LV2 [https://github.com/drobilla/lv2](https://github.com/drobilla/lv2)
+   (you should use your package manager for this if possible)
+ - LV2 Toolkit [https://github.com/lvtk/lvtk](https://github.com/lvtk/lvtk)
+ - OpenBLAS
 
 At the moment, the makefile is pretty basic. You may need to modify `LV2_DIR`
 to suit your needs.  If you build a new model, put it in `models/` with a `.pt`
