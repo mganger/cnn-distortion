@@ -78,6 +78,7 @@ The build requirements are:
    (you should use your package manager for this if possible)
  - LV2 Toolkit [https://github.com/lvtk/lvtk](https://github.com/lvtk/lvtk)
  - OpenBLAS
+ - Boost
 
 At the moment, the makefile is pretty basic. You may need to modify `LV2_DIR`
 to suit your needs.  If you build a new model, put it in `models/` with a `.pt`
