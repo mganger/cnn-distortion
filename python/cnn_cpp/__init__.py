@@ -12,7 +12,7 @@ def layer_to_str(layer, name, xi, xo, latency, divider=1):
     n = layer.out_channels
     d, = layer.dilation
     k, = layer.kernel_size
-    d /= divider
+    d //= divider
 
     weights = mat_to_str(np.moveaxis(layer.weight.detach().numpy(),2,0))
     bias = mat_to_str(layer.bias)
@@ -45,6 +45,18 @@ def relu_to_str(size,xi,xo,latency):
     	for (int i = 0; i < {size}; i++) {{
     	    for (int l = {latency}; l < L; l++) {{
     	        {xo}[i][l] = {xi}[i][l] > 0 ? {xi}[i][l] : 0;
+    	    }}
+    	}}
+
+    """
+    return r
+
+def leaky_relu_to_str(a,size,xi,xo,latency):
+    r = f"""
+    	// Leaky Rectified Linear Unit (ReLU)
+    	for (int i = 0; i < {size}; i++) {{
+    	    for (int l = {latency}; l < L; l++) {{
+    	        {xo}[i][l] = {xi}[i][l] > 0 ? {xi}[i][l] : {a}f*{xi}[i][l];
     	    }}
     	}}
 
@@ -88,6 +100,8 @@ struct {classname} {{
     for l in seq:
         if isinstance(l, nn.ReLU):
             r += relu_to_str(s,xi,xi,latency)
+        elif isinstance(l, nn.LeakyReLU):
+            r += leaky_relu_to_str(l.negative_slope, s,xi,xi,latency)
         else:
             latency += (l.kernel_size[0]-1)*(l.dilation[0]//divider)
             #xo = f"x{i}"

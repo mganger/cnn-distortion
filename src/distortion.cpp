@@ -2,8 +2,8 @@
 #include <boost/circular_buffer.hpp>
 #include "distortion.h"
 #include <cmath>
-#include <cnn_dist_v4.h>
-using cnn_dist = cnn_dist_v4;
+#include <cnn_dist_v5.h>
+using cnn_dist = cnn_dist_v5;
 
 float from_db(float x) {
 	return std::pow(10,x/20);

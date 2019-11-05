@@ -31,9 +31,9 @@ struct cnn_dist_v4 {
     	}
     	
     	// Apply main filter for layer_0
-    	// x_even[:,128:] = sum(w[k]@x_odd[:,128-(1-k)*128.0:L-(1-k)*128.0] for k in w.shape[0])
+    	// x_even[:,128:] = sum(w[k]@x_odd[:,128-(1-k)*128:L-(1-k)*128] for k in w.shape[0])
     	for (int k = 0; k < 2; k++) {
-    	    int offset = (1-k)*128.0;
+    	    int offset = (1-k)*128;
     	    cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 7, L-128, 1, 1.0, &w_layer_0[k][0][0], 1, &x_odd[0][128-offset], MAX_L, 1.0, &x_even[0][128], MAX_L);
     	}
 
@@ -58,9 +58,9 @@ struct cnn_dist_v4 {
     	}
     	
     	// Apply main filter for layer_1
-    	// x_odd[:,192:] = sum(w[k]@x_even[:,192-(1-k)*64.0:L-(1-k)*64.0] for k in w.shape[0])
+    	// x_odd[:,192:] = sum(w[k]@x_even[:,192-(1-k)*64:L-(1-k)*64] for k in w.shape[0])
     	for (int k = 0; k < 2; k++) {
-    	    int offset = (1-k)*64.0;
+    	    int offset = (1-k)*64;
     	    cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 7, L-192, 7, 1.0, &w_layer_1[k][0][0], 7, &x_even[0][192-offset], MAX_L, 1.0, &x_odd[0][192], MAX_L);
     	}
 
@@ -85,9 +85,9 @@ struct cnn_dist_v4 {
     	}
     	
     	// Apply main filter for layer_2
-    	// x_even[:,224:] = sum(w[k]@x_odd[:,224-(1-k)*32.0:L-(1-k)*32.0] for k in w.shape[0])
+    	// x_even[:,224:] = sum(w[k]@x_odd[:,224-(1-k)*32:L-(1-k)*32] for k in w.shape[0])
     	for (int k = 0; k < 2; k++) {
-    	    int offset = (1-k)*32.0;
+    	    int offset = (1-k)*32;
     	    cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 7, L-224, 7, 1.0, &w_layer_2[k][0][0], 7, &x_odd[0][224-offset], MAX_L, 1.0, &x_even[0][224], MAX_L);
     	}
 
@@ -112,9 +112,9 @@ struct cnn_dist_v4 {
     	}
     	
     	// Apply main filter for layer_3
-    	// x_odd[:,240:] = sum(w[k]@x_even[:,240-(1-k)*16.0:L-(1-k)*16.0] for k in w.shape[0])
+    	// x_odd[:,240:] = sum(w[k]@x_even[:,240-(1-k)*16:L-(1-k)*16] for k in w.shape[0])
     	for (int k = 0; k < 2; k++) {
-    	    int offset = (1-k)*16.0;
+    	    int offset = (1-k)*16;
     	    cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 7, L-240, 7, 1.0, &w_layer_3[k][0][0], 7, &x_even[0][240-offset], MAX_L, 1.0, &x_odd[0][240], MAX_L);
     	}
 
@@ -139,9 +139,9 @@ struct cnn_dist_v4 {
     	}
     	
     	// Apply main filter for layer_4
-    	// x_even[:,248:] = sum(w[k]@x_odd[:,248-(1-k)*8.0:L-(1-k)*8.0] for k in w.shape[0])
+    	// x_even[:,248:] = sum(w[k]@x_odd[:,248-(1-k)*8:L-(1-k)*8] for k in w.shape[0])
     	for (int k = 0; k < 2; k++) {
-    	    int offset = (1-k)*8.0;
+    	    int offset = (1-k)*8;
     	    cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 7, L-248, 7, 1.0, &w_layer_4[k][0][0], 7, &x_odd[0][248-offset], MAX_L, 1.0, &x_even[0][248], MAX_L);
     	}
 
@@ -166,9 +166,9 @@ struct cnn_dist_v4 {
     	}
     	
     	// Apply main filter for layer_5
-    	// x_odd[:,252:] = sum(w[k]@x_even[:,252-(1-k)*4.0:L-(1-k)*4.0] for k in w.shape[0])
+    	// x_odd[:,252:] = sum(w[k]@x_even[:,252-(1-k)*4:L-(1-k)*4] for k in w.shape[0])
     	for (int k = 0; k < 2; k++) {
-    	    int offset = (1-k)*4.0;
+    	    int offset = (1-k)*4;
     	    cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 7, L-252, 7, 1.0, &w_layer_5[k][0][0], 7, &x_even[0][252-offset], MAX_L, 1.0, &x_odd[0][252], MAX_L);
     	}
 
@@ -193,9 +193,9 @@ struct cnn_dist_v4 {
     	}
     	
     	// Apply main filter for layer_6
-    	// x_even[:,254:] = sum(w[k]@x_odd[:,254-(1-k)*2.0:L-(1-k)*2.0] for k in w.shape[0])
+    	// x_even[:,254:] = sum(w[k]@x_odd[:,254-(1-k)*2:L-(1-k)*2] for k in w.shape[0])
     	for (int k = 0; k < 2; k++) {
-    	    int offset = (1-k)*2.0;
+    	    int offset = (1-k)*2;
     	    cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 7, L-254, 7, 1.0, &w_layer_6[k][0][0], 7, &x_odd[0][254-offset], MAX_L, 1.0, &x_even[0][254], MAX_L);
     	}
 
@@ -220,9 +220,9 @@ struct cnn_dist_v4 {
     	}
     	
     	// Apply main filter for layer_7
-    	// x_odd[:,255:] = sum(w[k]@x_even[:,255-(1-k)*1.0:L-(1-k)*1.0] for k in w.shape[0])
+    	// x_odd[:,255:] = sum(w[k]@x_even[:,255-(1-k)*1:L-(1-k)*1] for k in w.shape[0])
     	for (int k = 0; k < 2; k++) {
-    	    int offset = (1-k)*1.0;
+    	    int offset = (1-k)*1;
     	    cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 7, L-255, 7, 1.0, &w_layer_7[k][0][0], 7, &x_even[0][255-offset], MAX_L, 1.0, &x_odd[0][255], MAX_L);
     	}
 
@@ -247,9 +247,9 @@ struct cnn_dist_v4 {
     	}
     	
     	// Apply main filter for layer_8
-    	// x_even[:,255:] = sum(w[k]@x_odd[:,255-(0-k)*0.5:L-(0-k)*0.5] for k in w.shape[0])
+    	// x_even[:,255:] = sum(w[k]@x_odd[:,255-(0-k)*0:L-(0-k)*0] for k in w.shape[0])
     	for (int k = 0; k < 1; k++) {
-    	    int offset = (0-k)*0.5;
+    	    int offset = (0-k)*0;
     	    cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 1, L-255, 7, 1.0, &w_layer_8[k][0][0], 7, &x_odd[0][255-offset], MAX_L, 1.0, &x_even[0][255], MAX_L);
     	}
 
