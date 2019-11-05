@@ -7,11 +7,12 @@ def mat_to_str(m):
     else:
         return '{' + ','.join(mat_to_str(mi) for mi in m) + '}'
     
-def layer_to_str(layer, name, xi, xo, latency):
+def layer_to_str(layer, name, xi, xo, latency, divider=1):
     m = layer.in_channels
     n = layer.out_channels
     d, = layer.dilation
     k, = layer.kernel_size
+    d /= divider
 
     weights = mat_to_str(np.moveaxis(layer.weight.detach().numpy(),2,0))
     bias = mat_to_str(layer.bias)
@@ -50,10 +51,12 @@ def relu_to_str(size,xi,xo,latency):
     """
     return r
 
-def sequential_to_str(seq, classname):
+def sequential_to_str(seq, classname, divider=1):
     
     max_w = max(l.out_channels for l in seq if hasattr(l,'out_channels'))
-    latency = sum((l.kernel_size[0]-1)*l.dilation[0] for l in seq if hasattr(l,'out_channels'))
+    latency = sum((l.kernel_size[0]-1)*(l.dilation[0]//divider) for l in seq if hasattr(l,'out_channels'))
+
+    max_L = 8192//divider
     
     r = f"""
 extern "C" {{
@@ -62,8 +65,8 @@ extern "C" {{
 
 struct {classname} {{
     const static int latency = {latency};
-    const static int MAX_L = {8192+latency};
-    // About {max_w*2*(8192+latency)/1e6} MB of buffer
+    const static int MAX_L = {max_L+latency};
+    // About {max_w*2*(max_L+latency)/1e6} MB of buffer
     float x_even[{max_w}][MAX_L];
     float x_odd [{max_w}][MAX_L];
     
@@ -86,10 +89,10 @@ struct {classname} {{
         if isinstance(l, nn.ReLU):
             r += relu_to_str(s,xi,xi,latency)
         else:
-            latency += (l.kernel_size[0]-1)*l.dilation[0]
+            latency += (l.kernel_size[0]-1)*(l.dilation[0]//divider)
             #xo = f"x{i}"
             xo = xevenodd[i%2]
-            r += layer_to_str(l,f"layer_{i}",xi,xo,latency)
+            r += layer_to_str(l,f"layer_{i}",xi,xo,latency,divider)
             s = l.out_channels
             i += 1
             xi = xo

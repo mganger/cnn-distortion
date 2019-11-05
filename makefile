@@ -4,7 +4,7 @@ LDFLAGS = -lopenblas -L/usr/lib64
 
 .SECONDARY: src/distortion.h
 
-all: lib/cnn_dist_v1.h lib/cnn_dist_v2.h lib/cnn_dist_v3.h lib/cnn_dist_v4.h bin/distortion.so
+all: lib/cnn_dist_v1.h lib/cnn_dist_v2.h lib/cnn_dist_v3.h lib/cnn_dist_v4.h lib/cnn_dist_v4_half.h bin/distortion.so
 
 install: bin/distortion.so lib/cnn_dist_v1.h
 	mkdir -p $(LV2_DIR)
@@ -18,3 +18,6 @@ src/%.h: src/%.ttl
 
 lib/%.h: models/%.pt
 	python3 -m cnn_cpp $< -o $@
+
+lib/%_half.h: models/%.pt
+	python3 -m cnn_cpp $< -o $@ -d 2
