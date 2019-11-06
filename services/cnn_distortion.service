@@ -1,0 +1,21 @@
+[Unit]
+Description=CNN Distortion
+Requires=jackd.service
+After=jackd.service
+
+[Service]
+# We have to use sleep here to create a pipe that never closes (so that jalv doesn't close).
+ExecStart=/bin/sh -c "sleep infinity | /usr/bin/jalv https://michaelganger.org/plugins/cnn_distortion"
+ExecStartPost=/bin/sleep 3
+ExecStartPost=/usr/bin/jack_connect system:capture_1 "CNN Distortion:in"
+ExecStartPost=/usr/bin/jack_connect "CNN Distortion:out" system:playback_1
+Group=audio
+User=pi
+#StandardInput=tty
+#StandardOutput=journal
+#TTYPath=/dev/tty51
+LimitRTPRIO=infinity
+LimitMEMLOCK=infinity
+
+[Install]
+WantedBy=multi-user.target

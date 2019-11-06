@@ -1,0 +1,24 @@
+[Unit]
+Description=JACK Audio Connection Kit
+After=sound.target
+
+[Service]
+# Jack Arguments
+#  -R             Realtime
+#  -p#            Maximum number of ports
+#  -dalsa         Use Alsa (all arguments after this apply to it)
+#  -dhw:DEVICE    Device to use
+#  -r#            Sample rate
+#  -p#            Size of the period (in samples)
+#  -n#            Number of periods
+#  -i#            Number of input channels
+#  -o#            Number of output channels
+ExecStart=/usr/bin/jackd -R -p8 -dalsa -dhw:CODEC -r48000 -p128 -n1 -i1 -o1
+Group=audio
+User=pi
+LimitRTPRIO=infinity
+LimitMEMLOCK=infinity
+Environment="JACK_NO_AUDIO_RESERVATION=0"
+
+[Install]
+WantedBy=multi-user.target
