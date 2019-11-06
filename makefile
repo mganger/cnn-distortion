@@ -17,6 +17,10 @@ piode:
 piode-install:
 	mkdir -p /usr/lib/lv2/cnn_distortion
 	cp bin/distortion.so src/distortion.ttl src/manifest.ttl /usr/lib/lv2/cnn_distortion
+	cp services/jackd.service services/cnn_distortion.service /etc/systemd/system/
+	systemctl reload-daemon
+	systemctl enable jackd
+	systemctl enable cnn_distortion
 
 install: bin/distortion.so
 	mkdir -p $(LV2_DIR)
