@@ -22,9 +22,17 @@ piode-install:
 	systemctl enable jackd
 	systemctl enable cnn_distortion
 
+piode-uninstall:
+	rm -r /usr/lib/lv2/cnn_distortion
+	systemctl disable jackd cnn_distortion
+	rm /etc/systemd/system/jackd.service /etc/systemd/system/cnn_distortion.service
+
 install: bin/distortion.so
 	mkdir -p $(LV2_DIR)
 	cp bin/distortion.so src/distortion.ttl src/manifest.ttl $(LV2_DIR)
+
+uninstall:
+	rm -r $(LV2_DIR)
 
 bin/%.so: src/%.cpp src/%.h src/%.ttl lib/$(CNN_VERSION)
 	$(CXX) $(CXXFLAGS) $< -shared -o $@ $(LDFLAGS)
