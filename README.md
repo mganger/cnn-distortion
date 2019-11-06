@@ -20,7 +20,9 @@ laptop. How, you ask? Using a CNN! Here's the process:
 The Process
 -----------
 
-I used PyTorch in a Jupyter notebook to train the CNN. It's in the repository, but you can see the result [here](https://nbviewer.jupyter.org/github/mganger/cnn-distortion/blob/master/notebooks/CNN%20Distortion.ipynb).
+I used PyTorch in a Jupyter notebook to train the CNN. It's in the repository,
+but you can see the result
+[here](https://nbviewer.jupyter.org/github/mganger/cnn-distortion/blob/master/notebooks/CNN%20Distortion.ipynb).
 
 The Result
 ----------
@@ -37,6 +39,36 @@ microphone, and room.
 An added benefit of this approach is that it adds a negligible amount of noise
 to the signal (basically only from roundoff errors from adding/multiplying 32
 bit floats). No more hiss from the amp (the guitar is still pretty noisy)!
+
+Running on a Raspberry PI
+-------------------------
+
+If you're interested in modifying the model, learning, or otherwise doing any
+customization, see the next section on Doing It Yourself. If you're running it
+on a Raspberry Pi, you're in luck! It's not too hard (with a couple
+modifications that I made).
+
+### Requirements:
+
+ - Raspberry Pi v2+ (with some access to the commandline).
+ - USB Audio Interface
+ - SD card with Raspbian Buster (or newer)
+
+### Setup:
+
+1. Clone `git@github.com:mganger/cnn-distortion`.
+2. Clone `https://github.com/lvtk/lvtk` and install using the instructions there.
+3. Run `sudo apt install libopenblas-dev libboost-dev lv2-dev jalv lv2-c++-tools`.
+4. Build with `make piode`.
+5. Determine the Alsa device you would like to use with `cat /proc/asound/cards` (see [here](https://jackaudio.org/faq/device_naming.html)).
+6. Update the `jackd.service` systemd service to use the right sound card.
+   Optionally, adjust the other parameters to your liking (but if you make the
+   period size larger than 256, make sure you update the `-DMAX_BUFFER=...`
+   argument under the `piode:` target).
+7. Install with `sudo make piode `.
+8. Reboot, plug in the audio device, and enjoy!
+
+For a video of this in action, see [this post](https://michaelganger.org/articles/index.php/2019/11/05/piode/).
 
 Doing It Yourself
 -----------------
@@ -88,7 +120,7 @@ extension and add the header directly to the `all` target in the makefile:
 all: lib/cnn_dist_v1.h lib/cnn_dist_v2.h lib/your_awesome_model.h bin/distortion.so
 ```
 
-To use your fancy model instead of the default one, you can modify
+To use your fancy model instead of the default one, just modify the `CNN_VERSION` variable in 
 `distortion.cpp` to accomodate:
 
 ```c++
