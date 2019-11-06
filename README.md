@@ -114,19 +114,12 @@ The build requirements are:
 
 At the moment, the makefile is pretty basic. You may need to modify `LV2_DIR`
 to suit your needs.  If you build a new model, put it in `models/` with a `.pt`
-extension and add the header directly to the `all` target in the makefile:
+extension.  To use your fancy model instead of the default one, just modify the
+`CNN_VERSION` variable in the makefile to accomodate (drop the `.pt` extension):
 
 ```makefile
-all: lib/cnn_dist_v1.h lib/cnn_dist_v2.h lib/your_awesome_model.h bin/distortion.so
-```
-
-To use your fancy model instead of the default one, just modify the `CNN_VERSION` variable in 
-`distortion.cpp` to accomodate:
-
-```c++
 ...
-#include <your_awesome_model.h>
-using cnn_dist = your_awesome_model_class;
+CNN_VERSION = your_awesome_model
 ...
 ```
 
