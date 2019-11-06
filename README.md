@@ -87,8 +87,8 @@ Learning and DSP knowledge:
 
 1. Record the training data
 2. Play around with CNN architectures in PyTorch until you get one that seems to work.
-3. Save the model and convert it to a C++ header file.
-4. Use the model in your plugin by `#include`ing it (or just modifying my example plugin).
+3. Save the model to the `models/` folder, and update the `CNN_VERSION`
+   variable in the makefile accordingly.
 
 You can install the PyTorch to C++ converter by installing the included python library:
 
