@@ -1,9 +1,10 @@
+
 #include <lvtk/plugin.hpp>
 #include <boost/circular_buffer.hpp>
 #include "distortion.h"
 #include <cmath>
-#include <cnn_dist_v5.h>
-using cnn_dist = cnn_dist_v5;
+#include <cnn_dist.h>
+using cnn_dist = CNN_VERSION;
 
 float from_db(float x) {
 	return std::pow(10,x/20);

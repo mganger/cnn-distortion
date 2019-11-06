@@ -5,7 +5,7 @@ extern "C" {
 
 struct cnn_dist_v2 {
     const static int latency = 510;
-    const static int MAX_L = 8702;
+    const static int MAX_L = 2048+latency;
     // About 0.17404 MB of buffer
     float x_even[10][MAX_L];
     float x_odd [10][MAX_L];
