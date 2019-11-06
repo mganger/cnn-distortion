@@ -4,9 +4,9 @@ extern "C" {
 };
 
 struct cnn_dist_v2 {
-    const static int latency = 510;
+    const static int latency = 255;
     const static int MAX_L = MAX_BUFFER + latency;
-    // About 2e-05*(MAX_BUFFER+510) MB of buffer
+    // About 2e-05*(MAX_BUFFER+255) MB of buffer
     float x_even[10][MAX_L];
     float x_odd [10][MAX_L];
     
@@ -25,22 +25,22 @@ struct cnn_dist_v2 {
     	
     	// Fill with biases for layer_0
     	for (int i = 0; i < 10; i++) {
-    	    for (int l = 256; l < L; l++) {
+    	    for (int l = 128; l < L; l++) {
     	        x_even[i][l] = b_layer_0[i];
     	    }
     	}
     	
     	// Apply main filter for layer_0
-    	// x_even[:,256:] = sum(w[k]@x_odd[:,256-(1-k)*256:L-(1-k)*256] for k in w.shape[0])
+    	// x_even[:,128:] = sum(w[k]@x_odd[:,128-(1-k)*128:L-(1-k)*128] for k in w.shape[0])
     	for (int k = 0; k < 2; k++) {
-    	    int offset = (1-k)*256;
-    	    cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 10, L-256, 1, 1.0, &w_layer_0[k][0][0], 1, &x_odd[0][256-offset], MAX_L, 1.0, &x_even[0][256], MAX_L);
+    	    int offset = (1-k)*128;
+    	    cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 10, L-128, 1, 1.0, &w_layer_0[k][0][0], 1, &x_odd[0][128-offset], MAX_L, 1.0, &x_even[0][128], MAX_L);
     	}
 
     
     	// Rectified Linear Unit (ReLU)
     	for (int i = 0; i < 10; i++) {
-    	    for (int l = 256; l < L; l++) {
+    	    for (int l = 128; l < L; l++) {
     	        x_even[i][l] = x_even[i][l] > 0 ? x_even[i][l] : 0;
     	    }
     	}
@@ -52,22 +52,22 @@ struct cnn_dist_v2 {
     	
     	// Fill with biases for layer_1
     	for (int i = 0; i < 10; i++) {
-    	    for (int l = 384; l < L; l++) {
+    	    for (int l = 192; l < L; l++) {
     	        x_odd[i][l] = b_layer_1[i];
     	    }
     	}
     	
     	// Apply main filter for layer_1
-    	// x_odd[:,384:] = sum(w[k]@x_even[:,384-(1-k)*128:L-(1-k)*128] for k in w.shape[0])
+    	// x_odd[:,192:] = sum(w[k]@x_even[:,192-(1-k)*64:L-(1-k)*64] for k in w.shape[0])
     	for (int k = 0; k < 2; k++) {
-    	    int offset = (1-k)*128;
-    	    cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 10, L-384, 10, 1.0, &w_layer_1[k][0][0], 10, &x_even[0][384-offset], MAX_L, 1.0, &x_odd[0][384], MAX_L);
+    	    int offset = (1-k)*64;
+    	    cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 10, L-192, 10, 1.0, &w_layer_1[k][0][0], 10, &x_even[0][192-offset], MAX_L, 1.0, &x_odd[0][192], MAX_L);
     	}
 
     
     	// Rectified Linear Unit (ReLU)
     	for (int i = 0; i < 10; i++) {
-    	    for (int l = 384; l < L; l++) {
+    	    for (int l = 192; l < L; l++) {
     	        x_odd[i][l] = x_odd[i][l] > 0 ? x_odd[i][l] : 0;
     	    }
     	}
@@ -79,22 +79,22 @@ struct cnn_dist_v2 {
     	
     	// Fill with biases for layer_2
     	for (int i = 0; i < 10; i++) {
-    	    for (int l = 448; l < L; l++) {
+    	    for (int l = 224; l < L; l++) {
     	        x_even[i][l] = b_layer_2[i];
     	    }
     	}
     	
     	// Apply main filter for layer_2
-    	// x_even[:,448:] = sum(w[k]@x_odd[:,448-(1-k)*64:L-(1-k)*64] for k in w.shape[0])
+    	// x_even[:,224:] = sum(w[k]@x_odd[:,224-(1-k)*32:L-(1-k)*32] for k in w.shape[0])
     	for (int k = 0; k < 2; k++) {
-    	    int offset = (1-k)*64;
-    	    cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 10, L-448, 10, 1.0, &w_layer_2[k][0][0], 10, &x_odd[0][448-offset], MAX_L, 1.0, &x_even[0][448], MAX_L);
+    	    int offset = (1-k)*32;
+    	    cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 10, L-224, 10, 1.0, &w_layer_2[k][0][0], 10, &x_odd[0][224-offset], MAX_L, 1.0, &x_even[0][224], MAX_L);
     	}
 
     
     	// Rectified Linear Unit (ReLU)
     	for (int i = 0; i < 10; i++) {
-    	    for (int l = 448; l < L; l++) {
+    	    for (int l = 224; l < L; l++) {
     	        x_even[i][l] = x_even[i][l] > 0 ? x_even[i][l] : 0;
     	    }
     	}
@@ -106,22 +106,22 @@ struct cnn_dist_v2 {
     	
     	// Fill with biases for layer_3
     	for (int i = 0; i < 10; i++) {
-    	    for (int l = 480; l < L; l++) {
+    	    for (int l = 240; l < L; l++) {
     	        x_odd[i][l] = b_layer_3[i];
     	    }
     	}
     	
     	// Apply main filter for layer_3
-    	// x_odd[:,480:] = sum(w[k]@x_even[:,480-(1-k)*32:L-(1-k)*32] for k in w.shape[0])
+    	// x_odd[:,240:] = sum(w[k]@x_even[:,240-(1-k)*16:L-(1-k)*16] for k in w.shape[0])
     	for (int k = 0; k < 2; k++) {
-    	    int offset = (1-k)*32;
-    	    cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 10, L-480, 10, 1.0, &w_layer_3[k][0][0], 10, &x_even[0][480-offset], MAX_L, 1.0, &x_odd[0][480], MAX_L);
+    	    int offset = (1-k)*16;
+    	    cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 10, L-240, 10, 1.0, &w_layer_3[k][0][0], 10, &x_even[0][240-offset], MAX_L, 1.0, &x_odd[0][240], MAX_L);
     	}
 
     
     	// Rectified Linear Unit (ReLU)
     	for (int i = 0; i < 10; i++) {
-    	    for (int l = 480; l < L; l++) {
+    	    for (int l = 240; l < L; l++) {
     	        x_odd[i][l] = x_odd[i][l] > 0 ? x_odd[i][l] : 0;
     	    }
     	}
@@ -133,22 +133,22 @@ struct cnn_dist_v2 {
     	
     	// Fill with biases for layer_4
     	for (int i = 0; i < 10; i++) {
-    	    for (int l = 496; l < L; l++) {
+    	    for (int l = 248; l < L; l++) {
     	        x_even[i][l] = b_layer_4[i];
     	    }
     	}
     	
     	// Apply main filter for layer_4
-    	// x_even[:,496:] = sum(w[k]@x_odd[:,496-(1-k)*16:L-(1-k)*16] for k in w.shape[0])
+    	// x_even[:,248:] = sum(w[k]@x_odd[:,248-(1-k)*8:L-(1-k)*8] for k in w.shape[0])
     	for (int k = 0; k < 2; k++) {
-    	    int offset = (1-k)*16;
-    	    cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 10, L-496, 10, 1.0, &w_layer_4[k][0][0], 10, &x_odd[0][496-offset], MAX_L, 1.0, &x_even[0][496], MAX_L);
+    	    int offset = (1-k)*8;
+    	    cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 10, L-248, 10, 1.0, &w_layer_4[k][0][0], 10, &x_odd[0][248-offset], MAX_L, 1.0, &x_even[0][248], MAX_L);
     	}
 
     
     	// Rectified Linear Unit (ReLU)
     	for (int i = 0; i < 10; i++) {
-    	    for (int l = 496; l < L; l++) {
+    	    for (int l = 248; l < L; l++) {
     	        x_even[i][l] = x_even[i][l] > 0 ? x_even[i][l] : 0;
     	    }
     	}
@@ -160,22 +160,22 @@ struct cnn_dist_v2 {
     	
     	// Fill with biases for layer_5
     	for (int i = 0; i < 10; i++) {
-    	    for (int l = 504; l < L; l++) {
+    	    for (int l = 252; l < L; l++) {
     	        x_odd[i][l] = b_layer_5[i];
     	    }
     	}
     	
     	// Apply main filter for layer_5
-    	// x_odd[:,504:] = sum(w[k]@x_even[:,504-(1-k)*8:L-(1-k)*8] for k in w.shape[0])
+    	// x_odd[:,252:] = sum(w[k]@x_even[:,252-(1-k)*4:L-(1-k)*4] for k in w.shape[0])
     	for (int k = 0; k < 2; k++) {
-    	    int offset = (1-k)*8;
-    	    cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 10, L-504, 10, 1.0, &w_layer_5[k][0][0], 10, &x_even[0][504-offset], MAX_L, 1.0, &x_odd[0][504], MAX_L);
+    	    int offset = (1-k)*4;
+    	    cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 10, L-252, 10, 1.0, &w_layer_5[k][0][0], 10, &x_even[0][252-offset], MAX_L, 1.0, &x_odd[0][252], MAX_L);
     	}
 
     
     	// Rectified Linear Unit (ReLU)
     	for (int i = 0; i < 10; i++) {
-    	    for (int l = 504; l < L; l++) {
+    	    for (int l = 252; l < L; l++) {
     	        x_odd[i][l] = x_odd[i][l] > 0 ? x_odd[i][l] : 0;
     	    }
     	}
@@ -187,22 +187,22 @@ struct cnn_dist_v2 {
     	
     	// Fill with biases for layer_6
     	for (int i = 0; i < 10; i++) {
-    	    for (int l = 508; l < L; l++) {
+    	    for (int l = 254; l < L; l++) {
     	        x_even[i][l] = b_layer_6[i];
     	    }
     	}
     	
     	// Apply main filter for layer_6
-    	// x_even[:,508:] = sum(w[k]@x_odd[:,508-(1-k)*4:L-(1-k)*4] for k in w.shape[0])
+    	// x_even[:,254:] = sum(w[k]@x_odd[:,254-(1-k)*2:L-(1-k)*2] for k in w.shape[0])
     	for (int k = 0; k < 2; k++) {
-    	    int offset = (1-k)*4;
-    	    cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 10, L-508, 10, 1.0, &w_layer_6[k][0][0], 10, &x_odd[0][508-offset], MAX_L, 1.0, &x_even[0][508], MAX_L);
+    	    int offset = (1-k)*2;
+    	    cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 10, L-254, 10, 1.0, &w_layer_6[k][0][0], 10, &x_odd[0][254-offset], MAX_L, 1.0, &x_even[0][254], MAX_L);
     	}
 
     
     	// Rectified Linear Unit (ReLU)
     	for (int i = 0; i < 10; i++) {
-    	    for (int l = 508; l < L; l++) {
+    	    for (int l = 254; l < L; l++) {
     	        x_even[i][l] = x_even[i][l] > 0 ? x_even[i][l] : 0;
     	    }
     	}
@@ -214,22 +214,22 @@ struct cnn_dist_v2 {
     	
     	// Fill with biases for layer_7
     	for (int i = 0; i < 10; i++) {
-    	    for (int l = 510; l < L; l++) {
+    	    for (int l = 255; l < L; l++) {
     	        x_odd[i][l] = b_layer_7[i];
     	    }
     	}
     	
     	// Apply main filter for layer_7
-    	// x_odd[:,510:] = sum(w[k]@x_even[:,510-(1-k)*2:L-(1-k)*2] for k in w.shape[0])
+    	// x_odd[:,255:] = sum(w[k]@x_even[:,255-(1-k)*1:L-(1-k)*1] for k in w.shape[0])
     	for (int k = 0; k < 2; k++) {
-    	    int offset = (1-k)*2;
-    	    cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 10, L-510, 10, 1.0, &w_layer_7[k][0][0], 10, &x_even[0][510-offset], MAX_L, 1.0, &x_odd[0][510], MAX_L);
+    	    int offset = (1-k)*1;
+    	    cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 10, L-255, 10, 1.0, &w_layer_7[k][0][0], 10, &x_even[0][255-offset], MAX_L, 1.0, &x_odd[0][255], MAX_L);
     	}
 
     
     	// Rectified Linear Unit (ReLU)
     	for (int i = 0; i < 10; i++) {
-    	    for (int l = 510; l < L; l++) {
+    	    for (int l = 255; l < L; l++) {
     	        x_odd[i][l] = x_odd[i][l] > 0 ? x_odd[i][l] : 0;
     	    }
     	}
@@ -241,21 +241,21 @@ struct cnn_dist_v2 {
     	
     	// Fill with biases for layer_8
     	for (int i = 0; i < 1; i++) {
-    	    for (int l = 510; l < L; l++) {
+    	    for (int l = 255; l < L; l++) {
     	        x_even[i][l] = b_layer_8[i];
     	    }
     	}
     	
     	// Apply main filter for layer_8
-    	// x_even[:,510:] = sum(w[k]@x_odd[:,510-(0-k)*1:L-(0-k)*1] for k in w.shape[0])
+    	// x_even[:,255:] = sum(w[k]@x_odd[:,255-(0-k)*0:L-(0-k)*0] for k in w.shape[0])
     	for (int k = 0; k < 1; k++) {
-    	    int offset = (0-k)*1;
-    	    cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 1, L-510, 10, 1.0, &w_layer_8[k][0][0], 10, &x_odd[0][510-offset], MAX_L, 1.0, &x_even[0][510], MAX_L);
+    	    int offset = (0-k)*0;
+    	    cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 1, L-255, 10, 1.0, &w_layer_8[k][0][0], 10, &x_odd[0][255-offset], MAX_L, 1.0, &x_even[0][255], MAX_L);
     	}
 
     
         // Copy result back to y
-        for (int l = 510; l < L; l++) {
+        for (int l = 255; l < L; l++) {
             y[l] = x_even[0][l];
         }
     }
