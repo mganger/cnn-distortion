@@ -106,9 +106,9 @@ sudo make install
 ```
 
 The build requirements are:
- - LV2 [https://github.com/drobilla/lv2](https://github.com/drobilla/lv2)
+ - LV2 - [https://github.com/drobilla/lv2](https://github.com/drobilla/lv2)
    (you should use your package manager for this if possible)
- - LV2 Toolkit [https://github.com/lvtk/lvtk](https://github.com/lvtk/lvtk)
+ - LV2 Toolkit - [https://github.com/lvtk/lvtk](https://github.com/lvtk/lvtk)
  - OpenBLAS
  - Boost
 
