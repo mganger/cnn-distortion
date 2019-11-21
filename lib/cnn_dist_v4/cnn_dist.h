@@ -3,6 +3,8 @@ extern "C" {
 #include <cblas.h>
 };
 
+#include <cmath>
+
 struct cnn_dist_v4 {
 	const static int latency = 510;
 	const static int MAX_L = MAX_BUFFER + latency;
