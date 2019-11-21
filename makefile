@@ -1,5 +1,5 @@
-CNN_VERSION = cnn_dist_v5
-MAX_BUFFER = 4096
+CNN_VERSION = cnn_dist_v15_24k
+MAX_BUFFER = 8192
 LV2_DIR = /usr/lib64/lv2/cnn_distortion
 CXXFLAGS = -O3 -I/usr/local/include/lvtk-2 -Ilib/$(CNN_VERSION)/ -fPIC -std=c++17 -DCNN_VERSION=$(CNN_VERSION) -DMAX_BUFFER=$(MAX_BUFFER)
 LDFLAGS = -lopenblas -L/usr/lib64
@@ -12,7 +12,7 @@ LIBS = $(patsubst models/%.pt,lib/%/cnn_dist.h,$(MODELS)) $(patsubst models/%.pt
 all: $(LIBS) bin/distortion.so
 
 piode:
-	g++ -O3 -I/usr/local/include/lvtk-2 -Ilib/$(CNN_VERSION)_half/ -fPIC -DCNN_VERSION=$(CNN_VERSION) -DMAX_BUFFER=256 -std=c++14 src/distortion.cpp -shared -o bin/distortion.so -lopenblas -L/usr/lib
+	g++ -O3 -I/usr/local/include/lvtk-2 -Ilib/$(CNN_VERSION)/ -fPIC -DCNN_VERSION=$(CNN_VERSION) -DMAX_BUFFER=256 -std=c++14 src/distortion.cpp -shared -o bin/distortion.so -lopenblas -L/usr/lib
 
 piode-install:
 	mkdir -p /usr/lib/lv2/cnn_distortion
