@@ -29,6 +29,15 @@ class SimpleTanh(nn.Module):
         y[r3] = x[r3]-x[r3]**3/12
         return y
 
+class SoftSmoosh(nn.Module):
+    def __init__(self,l):
+        super().__init__()
+        self.l = l
+        self.act = nn.Softsign()
+    def forward(self, x):
+        return x-self.act(x/self.l)*self.l
+
+
 def mat_to_str(m):
 	if len(m.shape) == 0:
 		return str(m.item())
@@ -182,6 +191,30 @@ def simpletanh_to_str(size,xi,xo,latency):
 """
 	return r
 
+def softshrink_to_str(lambd,size,xi,xo,latency):
+	r = f"""
+		// Softshrink
+		for (int i = 0; i < {size}; i++) {{
+			for (int l = {latency}; l < L; l++) {{
+				auto v = {xi}[i][l];
+				{xo}[i][l] = v > {lambd}f ? v-{lambd}f : v < -{lambd}f ? v+{lambd}f : 0;
+			}}
+		}}
+"""
+	return r
+
+def softsmoosh_to_str(lambd,size,xi,xo,latency):
+	r = f"""
+		// Softshrink
+		for (int i = 0; i < {size}; i++) {{
+			for (int l = {latency}; l < L; l++) {{
+				auto v = {xi}[i][l];
+				{xo}[i][l] = v > 0 ? v*v/({lambd}f+v) : -v*v/({lambd}f-v);
+			}}
+		}}
+"""
+	return r
+
 def sequential_to_str(seq, classname, divider=1):
 	max_w = max(l.out_channels for l in seq if hasattr(l,'out_channels'))
 	latency = sum((l.kernel_size[0]-1)*(l.dilation[0]//divider) for l in seq if hasattr(l,'out_channels'))
@@ -232,6 +265,10 @@ struct {classname} {{
 			r += simpletanh_to_str(s,xi,xi,latency)
 		elif isinstance(l, nn.Softsign):
 			r += softsign_to_str(s,xi,xi,latency)
+		elif isinstance(l, nn.Softshrink):
+			r += softshrink_to_str(l.lambd,s,xi,xi,latency)
+		elif isinstance(l, SoftSmoosh):
+			r += softsmoosh_to_str(l.l,s,xi,xi,latency)
 		else:
 			latency += (l.kernel_size[0]-1)*(l.dilation[0]//divider)
 			#xo = f"x{i}"
