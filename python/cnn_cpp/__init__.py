@@ -44,6 +44,16 @@ def mat_to_str(m):
 	else:
 		return '{' + ','.join(mat_to_str(mi) for mi in m) + '}'
 
+def sgemm(major,transa,transb,n,m,k,alpha,A,lda,B,ldb,beta,C,ldc):
+	major = {'col':'CblasColMajor','row':'CblasRowMajor'}[major]
+
+	d = {False:'CblasNoTrans',True:'CblasTrans'}
+	transa,transb = d[transa],d[transb]
+
+	
+	return f"cblas_sgemm({major}, {transa}, {transb}, {n}, {m}, {k}, {alpha}, {A}, {lda}, {B}, {ldb}, {beta}, {C}, {ldc});"
+
+
 def layer_to_str(layer, name, xi, xo, latency, divider=1):
 	m = layer.in_channels
 	n = layer.out_channels
@@ -51,32 +61,33 @@ def layer_to_str(layer, name, xi, xo, latency, divider=1):
 	k, = layer.kernel_size
 	d //= divider
 
-	weights = mat_to_str(np.moveaxis(layer.weight.detach().numpy(),2,0))
+	weights = mat_to_str(np.transpose(layer.weight.detach().numpy(),(2,1,0)))
 	if layer.bias is None:
-		r = f"""
+		return f"""
 		// auto-generated code for layer {name}: {layer}
-		const float w_{name}[{k}][{n}][{m}] = {weights};
+		const float w_{name}[{k}][{m}][{n}] = {weights};
 
 		// Apply main filter for {name}
 		// {xo}[:,{latency}:] = sum(w[k]@{xi}[:,{latency}-({k-1}-k)*{d}:L-({k-1}-k)*{d}] for k in w.shape[0])
 		for (int k = 0; k < {k}; k++) {{
 			int offset = ({k-1}-k)*{d};
-			cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, {n}, L-{latency}, {m}, 1.0, &w_{name}[k][0][0], {m}, &{xi}[0][{latency}-offset], MAX_L, k==0?0.0:1.0, &{xo}[0][{latency}], MAX_L);
-		}}
+			float beta = k == 0 ? 0.0 : 1.0;
+			""" + sgemm('col',False,False,n,f"L-{latency}",m,1.0,f"&w_{name}[k][0][0]",n,f"&{xi}[{latency}-offset][0]","MAX_CH","beta",f"&{xo}[{latency}][0]","MAX_CH") + """
+		}
 
 """
 	else:
 		bias = mat_to_str(layer.bias)
 
-		r = f"""
+		return f"""
 		// auto-generated code for layer {name}: {layer}
-		const float w_{name}[{k}][{n}][{m}] = {weights};
+		const float w_{name}[{k}][{m}][{n}] = {weights};
 		const float b_{name}[{n}] = {bias};
 
 		// Fill with biases for {name}
-		for (int i = 0; i < {n}; i++) {{
-			for (int l = {latency}; l < L; l++) {{
-				{xo}[i][l] = b_{name}[i];
+		for (int l = {latency}; l < L; l++) {{
+			for (int i = 0; i < {n}; i++) {{
+				{xo}[l][i] = b_{name}[i];
 			}}
 		}}
 
@@ -84,142 +95,44 @@ def layer_to_str(layer, name, xi, xo, latency, divider=1):
 		// {xo}[:,{latency}:] = sum(w[k]@{xi}[:,{latency}-({k-1}-k)*{d}:L-({k-1}-k)*{d}] for k in w.shape[0])
 		for (int k = 0; k < {k}; k++) {{
 			int offset = ({k-1}-k)*{d};
-			cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, {n}, L-{latency}, {m}, 1.0, &w_{name}[k][0][0], {m}, &{xi}[0][{latency}-offset], MAX_L, 1.0, &{xo}[0][{latency}], MAX_L);
-		}}
+			""" + sgemm('col',False,False,n,f"L-{latency}",m,1.0,f"&w_{name}[k][0][0]",n,f"&{xi}[{latency}-offset][0]","MAX_CH",1.0,f"&{xo}[{latency}][0]","MAX_CH") + """
+		}
 
 """
-	return r
 
-def tanh_to_str(size,xi,xo,latency):
-	r = f"""
-		// Tanh (i.e. soft clip)
-		for (int i = 0; i < {size}; i++) {{
-			for (int l = {latency}; l < L; l++) {{
-				{xo}[i][l] = std::tanh({xi}[i][l]);
+nonlin = {
+	nn.Tanh: ('Tanh (i.e. soft clip', 'std::tanhf(v)'),
+	nn.Hardtanh: ('Hard Tanh (i.e. hard clip)','v > 1 ? 1 : v < -1 ? -1 : v'),
+	nn.Softsign: ('Soft Sign x/(1+|x|)','v > 0 ? v/(1+v) : v/(1-v)'),
+	nn.Tanh: ('Leaky Tanh','v > 1 ? 1+{l.a}f*(v-1) : v < -1 ? -1+{l.a}f*(v+1) : v'),
+	Smoosh: ('Smoosher','v > {l.a}f ? v-{l.a}f : v < -{l.a}f ? v+{l.a}f : 0'),
+	nn.ReLU: ('Rectified Linear Unit (ReLU)','v > 0 ? v : 0'),
+	nn.LeakyReLU: ('Leaky Rectified Linear Unit (ReLU)','v > 0 ? v : {a}f*v'),
+	SimpleTanh: ('Simple Tanh (polynomial)', f'v > 2 ? {4/3}f : v < -2 ? -{4/3}f : v - v*v*v*{1/12}f'),
+	nn.Softshrink: ('Softshrink','v > {l.lambd}f ? v-{l.lambd}f : v < -{l.lambd}f ? v+{l.lambd}f : 0'),
+	SoftSmoosh: ('Softsmoosh', 'v > 0 ? v*v/({l.lambd}f+v) : -v*v/({l.lambd}f-v)'),
+}
+
+def nonlin_to_str(layer,chan,xi,xo,latency):
+	comment, code = nonlin[type(layer)]
+	code = code.format(l=layer)
+	return f"""
+		// {comment}
+		for (int l = {latency}; l < L; l++) {{
+			for (int i = 0; i < {chan}; i++) {{
+				auto& v = {xi}[i][l];
+				{xo}[l][i] = {code};
 			}}
 		}}
 
 """
-	return r
-
-def hardtanh_to_str(size,xi,xo,latency):
-	r = f"""
-		// Hard Tanh (i.e. hard clip)
-		for (int i = 0; i < {size}; i++) {{
-			for (int l = {latency}; l < L; l++) {{
-				auto v = {xi}[i][l];
-				{xo}[i][l] = v > 1 ? 1 : v < -1 ? -1 : v;
-			}}
-		}}
-
-"""
-	return r
-
-def softsign_to_str(size,xi,xo,latency):
-	r = f"""
-		// Soft Sign x/(1+|x|)
-		for (int i = 0; i < {size}; i++) {{
-			for (int l = {latency}; l < L; l++) {{
-				auto v = {xi}[i][l];
-				{xo}[i][l] = v > 0 ? v/(1+v) : v/(1-v);
-			}}
-		}}
-
-"""
-	return r
-
-def leakytanh_to_str(a,size,xi,xo,latency):
-	r = f"""
-		// Leaky Tanh
-		for (int i = 0; i < {size}; i++) {{
-			for (int l = {latency}; l < L; l++) {{
-				auto v = {xi}[i][l];
-				{xo}[i][l] = v > 1 ? 1+{a}*(v-1) : v < -1 ? -1+{a}*(v+1) : v;
-			}}
-		}}
-
-"""
-	return r
-
-def smoosh_to_str(a,size,xi,xo,latency):
-	r = f"""
-		// Smoosher
-		for (int i = 0; i < {size}; i++) {{
-			for (int l = {latency}; l < L; l++) {{
-				auto v = {xi}[i][l];
-				{xo}[i][l] = v > {a}f ? v-{a}f : v < -{a}f ? v+{a}f : 0;
-			}}
-		}}
-
-"""
-	return r
-
-def relu_to_str(size,xi,xo,latency):
-	r = f"""
-		// Rectified Linear Unit (ReLU)
-		for (int i = 0; i < {size}; i++) {{
-			for (int l = {latency}; l < L; l++) {{
-				{xo}[i][l] = {xi}[i][l] > 0 ? {xi}[i][l] : 0;
-			}}
-		}}
-
-"""
-	return r
-
-def leaky_relu_to_str(a,size,xi,xo,latency):
-	r = f"""
-		// Leaky Rectified Linear Unit (ReLU)
-		for (int i = 0; i < {size}; i++) {{
-			for (int l = {latency}; l < L; l++) {{
-				{xo}[i][l] = {xi}[i][l] > 0 ? {xi}[i][l] : {a}f*{xi}[i][l];
-			}}
-		}}
-
-"""
-	return r
-
-def simpletanh_to_str(size,xi,xo,latency):
-	r = f"""
-		// Leaky Rectified Linear Unit (ReLU)
-		for (int i = 0; i < {size}; i++) {{
-			for (int l = {latency}; l < L; l++) {{
-				auto v = {xi}[i][l];
-				{xo}[i][l] = v > 2 ? {4/3} : v < -2 ? -{4/3} : v - v*v*v*{1/12};
-			}}
-		}}
-
-"""
-	return r
-
-def softshrink_to_str(lambd,size,xi,xo,latency):
-	r = f"""
-		// Softshrink
-		for (int i = 0; i < {size}; i++) {{
-			for (int l = {latency}; l < L; l++) {{
-				auto v = {xi}[i][l];
-				{xo}[i][l] = v > {lambd}f ? v-{lambd}f : v < -{lambd}f ? v+{lambd}f : 0;
-			}}
-		}}
-"""
-	return r
-
-def softsmoosh_to_str(lambd,size,xi,xo,latency):
-	r = f"""
-		// Softshrink
-		for (int i = 0; i < {size}; i++) {{
-			for (int l = {latency}; l < L; l++) {{
-				auto v = {xi}[i][l];
-				{xo}[i][l] = v > 0 ? v*v/({lambd}f+v) : -v*v/({lambd}f-v);
-			}}
-		}}
-"""
-	return r
 
 def sequential_to_str(seq, classname, divider=1):
 	max_w = max(l.out_channels for l in seq if hasattr(l,'out_channels'))
 	latency = sum((l.kernel_size[0]-1)*(l.dilation[0]//divider) for l in seq if hasattr(l,'out_channels'))
 
 	r = f"""
+#pragma once
 extern "C" {{
 #include <cblas.h>
 }};
@@ -229,9 +142,10 @@ extern "C" {{
 struct {classname} {{
 	const static int latency = {latency};
 	const static int MAX_L = MAX_BUFFER + latency;
+	const static int MAX_CH = {max_w};
 	// About {max_w*2/1e6}*(MAX_BUFFER+{latency}) MB of buffer
-	float x_even[{max_w}][MAX_L];
-	float x_odd [{max_w}][MAX_L];
+	float x_even[MAX_L][MAX_CH];
+	float x_odd [MAX_L][MAX_CH];
 
 	void operator()(float* x, float* y, int L) {{
 
@@ -239,7 +153,7 @@ struct {classname} {{
 		L = L > MAX_L ? MAX_L : L;
 
 		for (int i = 0; i < L; i++) {{
-			x_odd[0][i] = x[i];
+			x_odd[i][0] = x[i];
 		}}
 """
 
@@ -249,27 +163,9 @@ struct {classname} {{
 	xevenodd = ["x_even","x_odd"]
 	xi = xevenodd[1]
 	for l in seq:
-		if isinstance(l, nn.ReLU):
-			r += relu_to_str(s,xi,xi,latency)
-		elif isinstance(l, nn.LeakyReLU):
-			r += leaky_relu_to_str(l.negative_slope, s,xi,xi,latency)
-		elif isinstance(l, Smoosh):
-			r += smoosh_to_str(l.gap,s,xi,xi,latency)
-		elif isinstance(l, nn.Hardtanh):
-			r += hardtanh_to_str(s,xi,xi,latency)
-		elif isinstance(l, nn.Tanh):
-			r += tanh_to_str(s,xi,xi,latency)
-		elif isinstance(l, LeakyTanh):
-			r += leakytanh_to_str(l.a,s,xi,xi,latency)
-		elif isinstance(l, SimpleTanh):
-			r += simpletanh_to_str(s,xi,xi,latency)
-		elif isinstance(l, nn.Softsign):
-			r += softsign_to_str(s,xi,xi,latency)
-		elif isinstance(l, nn.Softshrink):
-			r += softshrink_to_str(l.lambd,s,xi,xi,latency)
-		elif isinstance(l, SoftSmoosh):
-			r += softsmoosh_to_str(l.l,s,xi,xi,latency)
-		else:
+		if isinstance(l, tuple(nonlin)):
+			r += nonlin_to_str(l,s,xi,xi,latency)
+		elif isinstance(l, nn.Conv1d):
 			latency += (l.kernel_size[0]-1)*(l.dilation[0]//divider)
 			#xo = f"x{i}"
 			xo = xevenodd[i%2]
@@ -277,10 +173,12 @@ struct {classname} {{
 			s = l.out_channels
 			i += 1
 			xi = xo
+		else:
+			raise NotImplementedError(f"No converter for type {type(l)}")
 	r += f"""
 		// Copy result back to y
 		for (int l = {latency}; l < L; l++) {{
-			y[l] = {xo}[0][l];
+			y[l] = {xo}[l][0];
 		}}
 	}}
 }};
