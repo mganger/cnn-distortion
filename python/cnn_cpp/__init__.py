@@ -104,13 +104,13 @@ nonlin = {
 	nn.Tanh: ('Tanh (i.e. soft clip', 'std::tanhf(v)'),
 	nn.Hardtanh: ('Hard Tanh (i.e. hard clip)','v > 1 ? 1 : v < -1 ? -1 : v'),
 	nn.Softsign: ('Soft Sign x/(1+|x|)','v > 0 ? v/(1+v) : v/(1-v)'),
-	nn.Tanh: ('Leaky Tanh','v > 1 ? 1+{l.a}f*(v-1) : v < -1 ? -1+{l.a}f*(v+1) : v'),
+	LeakyTanh: ('Leaky Tanh','v > 1 ? 1+{l.a}f*(v-1) : v < -1 ? -1+{l.a}f*(v+1) : v'),
 	Smoosh: ('Smoosher','v > {l.a}f ? v-{l.a}f : v < -{l.a}f ? v+{l.a}f : 0'),
 	nn.ReLU: ('Rectified Linear Unit (ReLU)','v > 0 ? v : 0'),
-	nn.LeakyReLU: ('Leaky Rectified Linear Unit (ReLU)','v > 0 ? v : {a}f*v'),
+	nn.LeakyReLU: ('Leaky Rectified Linear Unit (ReLU)','v > 0 ? v : {l.negative_slope}f*v'),
 	SimpleTanh: ('Simple Tanh (polynomial)', f'v > 2 ? {4/3}f : v < -2 ? -{4/3}f : v - v*v*v*{1/12}f'),
 	nn.Softshrink: ('Softshrink','v > {l.lambd}f ? v-{l.lambd}f : v < -{l.lambd}f ? v+{l.lambd}f : 0'),
-	SoftSmoosh: ('Softsmoosh', 'v > 0 ? v*v/({l.lambd}f+v) : -v*v/({l.lambd}f-v)'),
+	SoftSmoosh: ('Softsmoosh', 'v > 0 ? v*v/({l.l}f+v) : -v*v/({l.l}f-v)'),
 }
 
 def nonlin_to_str(layer,chan,xi,xo,latency):
@@ -174,7 +174,8 @@ struct {classname} {{
 			i += 1
 			xi = xo
 		else:
-			raise NotImplementedError(f"No converter for type {type(l)}")
+			#raise NotImplementedError(f"No converter for type {type(l)}")
+			pass
 	r += f"""
 		// Copy result back to y
 		for (int l = {latency}; l < L; l++) {{
