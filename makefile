@@ -1,7 +1,7 @@
 CNN_VERSION = cnn_dist_v15_24k
 MAX_BUFFER = 8192
 LV2_DIR = /usr/lib64/lv2/cnn_distortion
-CXXFLAGS = -O3 -I/usr/local/include/lvtk-2 -Ilib/$(CNN_VERSION)/ -fPIC -std=c++17 -DCNN_VERSION=$(CNN_VERSION) -DMAX_BUFFER=$(MAX_BUFFER)
+CXXFLAGS = -O3 -I/usr/local/include/lvtk-2 -Ilib/$(CNN_VERSION)/ -Ilib/ -fPIC -std=c++17 -DCNN_VERSION=$(CNN_VERSION) -DMAX_BUFFER=$(MAX_BUFFER)
 LDFLAGS = -lopenblas -L/usr/lib64
 
 MODELS = $(wildcard models/*.pt)
@@ -34,7 +34,7 @@ install: bin/distortion.so
 uninstall:
 	rm -r $(LV2_DIR)
 
-bin/%.so: src/%.cpp src/%.h src/%.ttl lib/$(CNN_VERSION)
+bin/%.so: src/%.cpp src/%.h src/%.ttl lib/$(CNN_VERSION) lib/cnn_conv.h
 	$(CXX) $(CXXFLAGS) $< -shared -o $@ $(LDFLAGS)
 
 src/%.h: src/%.ttl

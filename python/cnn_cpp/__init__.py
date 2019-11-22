@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 import numpy as np
 
@@ -40,7 +41,7 @@ class SoftSmoosh(nn.Module):
 
 def mat_to_str(m):
 	if len(m.shape) == 0:
-		return str(m.item())
+		return str(m)
 	else:
 		return '{' + ','.join(mat_to_str(mi) for mi in m) + '}'
 
@@ -52,53 +53,6 @@ def sgemm(major,transa,transb,n,m,k,alpha,A,lda,B,ldb,beta,C,ldc):
 
 	
 	return f"cblas_sgemm({major}, {transa}, {transb}, {n}, {m}, {k}, {alpha}, {A}, {lda}, {B}, {ldb}, {beta}, {C}, {ldc});"
-
-
-def layer_to_str(layer, name, xi, xo, latency, divider=1):
-	m = layer.in_channels
-	n = layer.out_channels
-	d, = layer.dilation
-	k, = layer.kernel_size
-	d //= divider
-
-	weights = mat_to_str(np.transpose(layer.weight.detach().numpy(),(2,1,0)))
-	if layer.bias is None:
-		return f"""
-		// auto-generated code for layer {name}: {layer}
-		const float w_{name}[{k}][{m}][{n}] = {weights};
-
-		// Apply main filter for {name}
-		// {xo}[:,{latency}:] = sum(w[k]@{xi}[:,{latency}-({k-1}-k)*{d}:L-({k-1}-k)*{d}] for k in w.shape[0])
-		for (int k = 0; k < {k}; k++) {{
-			int offset = ({k-1}-k)*{d};
-			float beta = k == 0 ? 0.0 : 1.0;
-			""" + sgemm('col',False,False,n,f"L-{latency}",m,1.0,f"&w_{name}[k][0][0]",n,f"&{xi}[{latency}-offset][0]","MAX_CH","beta",f"&{xo}[{latency}][0]","MAX_CH") + """
-		}
-
-"""
-	else:
-		bias = mat_to_str(layer.bias)
-
-		return f"""
-		// auto-generated code for layer {name}: {layer}
-		const float w_{name}[{k}][{m}][{n}] = {weights};
-		const float b_{name}[{n}] = {bias};
-
-		// Fill with biases for {name}
-		for (int l = {latency}; l < L; l++) {{
-			for (int i = 0; i < {n}; i++) {{
-				{xo}[l][i] = b_{name}[i];
-			}}
-		}}
-
-		// Apply main filter for {name}
-		// {xo}[:,{latency}:] = sum(w[k]@{xi}[:,{latency}-({k-1}-k)*{d}:L-({k-1}-k)*{d}] for k in w.shape[0])
-		for (int k = 0; k < {k}; k++) {{
-			int offset = ({k-1}-k)*{d};
-			""" + sgemm('col',False,False,n,f"L-{latency}",m,1.0,f"&w_{name}[k][0][0]",n,f"&{xi}[{latency}-offset][0]","MAX_CH",1.0,f"&{xo}[{latency}][0]","MAX_CH") + """
-		}
-
-"""
 
 nonlin = {
 	nn.Tanh: ('Tanh (i.e. soft clip', 'std::tanhf(v)'),
@@ -128,60 +82,94 @@ def nonlin_to_str(layer,chan,xi,xo,latency):
 """
 
 def sequential_to_str(seq, classname, divider=1):
-	max_w = max(l.out_channels for l in seq if hasattr(l,'out_channels'))
-	latency = sum((l.kernel_size[0]-1)*(l.dilation[0]//divider) for l in seq if hasattr(l,'out_channels'))
+	#latency = sum((l.kernel_size[0]-1)*(l.dilation[0]//divider) for l in seq if hasattr(l,'out_channels'))
 
-	r = f"""
-#pragma once
-extern "C" {{
-#include <cblas.h>
-}};
-
-#include <cmath>
+	head = f"""#pragma once
+#include <cnn_conv.h>
 
 struct {classname} {{
-	const static int latency = {latency};
-	const static int MAX_L = MAX_BUFFER + latency;
-	const static int MAX_CH = {max_w};
-	// About {max_w*2/1e6}*(MAX_BUFFER+{latency}) MB of buffer
-	float x_even[MAX_L][MAX_CH];
-	float x_odd [MAX_L][MAX_CH];
+"""
+
+	func = f"""
 
 	void operator()(float* x, float* y, int L) {{
 
-		// Ensure we don't segfault
-		L = L > MAX_L ? MAX_L : L;
+		if (L > MAX_L || L <= latency) {{
+			return;
+		}}
 
 		for (int i = 0; i < L; i++) {{
 			x_odd[i][0] = x[i];
 		}}
+
+		//conv_nb(w, b, xi, xo, inch, ouch, ksize, inst, oust, dilation, length, maxch)
+		//nonlin(xi,ch,length,st)
 """
 
-	s = None
 	i = 0
-	latency = 0
+	totallatency = 0
 	xevenodd = ["x_even","x_odd"]
-	xi = xevenodd[1]
+	xo = xevenodd[1]
+	oust = 1
 	for l in seq:
-		if isinstance(l, tuple(nonlin)):
-			r += nonlin_to_str(l,s,xi,xi,latency)
-		elif isinstance(l, nn.Conv1d):
-			latency += (l.kernel_size[0]-1)*(l.dilation[0]//divider)
-			#xo = f"x{i}"
-			xo = xevenodd[i%2]
-			r += layer_to_str(l,f"layer_{i}",xi,xo,latency,divider)
-			s = l.out_channels
+		if isinstance(l, (nn.Conv1d,nn.ConvTranspose1d)):
+			inch, ouch = l.in_channels, l.out_channels
+			ksize = l.kernel_size[0]
+			dilation = l.dilation[0]
+			inst = oust
+			xi,xo = xo,xevenodd[i%2]
+			s = l.stride[0]
+			latency = inst*(ksize-1)*dilation
+			totallatency += latency
+			if isinstance(l,nn.Conv1d):
+				oust = inst*s
+			else:
+				assert (inst%s) == 0, "Total stride must be an integer ratio"
+				oust = inst//s
+
+			if l.bias is None:
+				l.bias = nn.Parameter(torch.zeros(ouch))
+			if l is seq[-1]:
+				l.bias = None
+				l.bias = nn.Parameter(-seq(torch.zeros((1,1,totallatency+10)))[0,0,:1])
+
+			name = f"layer_{i}"
+			head += f"""
+	static constexpr float w{i}[{ksize}][{inch}][{ouch}] = {mat_to_str(np.transpose(l.weight.detach().numpy().astype(np.float32),(2,1,0)))};
+	static constexpr float b{i}[{ouch}] = {mat_to_str(l.bias.detach().numpy().astype(np.float32))};
+"""
+
+			func += f"""
+		conv_nb(&w{i}, &b{i}, &{xi}, &{xo}, {inst}, {oust}, {dilation}, L-={latency});"""
+
+			#latency += (l.kernel_size[0]-1)*(l.dilation[0]//divider)*stride*l.stride[0]
+			#r += layer_to_str(l,f"layer_{i}",xi,xo,latency,stride,divider)
+			#ch = l.out_channels
+			#stride *= l.stride[0]
 			i += 1
-			xi = xo
+		elif isinstance(l, tuple(nonlin)):
+			func += f"""
+		relu(&{xo}, {ouch}, L, {oust});"""
 		else:
-			#raise NotImplementedError(f"No converter for type {type(l)}")
-			pass
-	r += f"""
+			raise NotImplementedError(f"No converter for type {type(l)}")
+	func += f"""
+
 		// Copy result back to y
-		for (int l = {latency}; l < L; l++) {{
-			y[l] = {xo}[l][0];
+		for (int l = 0; l < L; l++) {{
+			y[l+latency] = {xo}[l][0];
 		}}
 	}}
 }};
 """
-	return r
+	max_ch = max(l.out_channels for l in seq if hasattr(l,'out_channels'))
+	head += f"""
+
+	const static int latency = {totallatency};
+	const static int MAX_L = MAX_BUFFER + latency;
+	const static int MAX_CH = {max_ch};
+	// About {max_ch*2/1e6}*(MAX_BUFFER+{latency}) MB of buffer
+	float x_even[MAX_L][MAX_CH];
+	float x_odd [MAX_L][MAX_CH];
+
+"""
+	return head + func
